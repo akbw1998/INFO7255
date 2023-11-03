@@ -2,16 +2,24 @@ const express = require('express')
 const userRouter = express.Router();
 const ControllerModule = require('../controllers/index')
 const MiddlewareAPI = require('../utils/middlewares')
-const validatePlanSchema = require('../schema/validate-plan-schema')
+const {planPostValidator, planPatchValidator} = require('../schema/validate-plan-schema')
+const {verifyToken} = require('../utils/helpers')
 const PlanController = ControllerModule.PlanController
 
 userRouter.route('/v1/plan/:planId')
-          .get(PlanController.getPlanById)//MiddlewareAPI.invalidateEmptyReqIdParam,
-          .delete(PlanController.deletePlanById) //MiddlewareAPI.invalidateEmptyReqIdParam,
-            
+          .get(MiddlewareAPI.authenticate, PlanController.getPlanById)//MiddlewareAPI.invalidateEmptyReqIdParam,
+          .delete(MiddlewareAPI.authenticate, PlanController.deletePlanById) //MiddlewareAPI.invalidateEmptyReqIdParam,
+          .patch(MiddlewareAPI.authenticate, PlanController.patchPlanRecursiveById) 
 
 userRouter.route('/v1/plan')
-          .post(MiddlewareAPI.validateDTO(validatePlanSchema),
-                PlanController.postPlan)              
+          .post(MiddlewareAPI.authenticate, MiddlewareAPI.validateDTO(planPostValidator),
+                PlanController.postPlanRecursive)              
 
+// userRouter.route('/v1/token')
+//           .get(async(req,res) => {
+//             const token = process.env['token'];
+//             const jwksUri = process.env['jwksUri'];
+//             await verifyToken(token, jwksUri);
+//             res.send({succcess: "yes"}).status(200);
+//           })
 module.exports = userRouter
