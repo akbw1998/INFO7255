@@ -104,54 +104,74 @@ const generateETag = (content) => {
    }
  }
 
- const recursivePatchinRedis = (origObj, origObjParent, patchObj) =>{
-   console.log('origObj = ', origObj);
-   console.log('patchObj = ', patchObj);
-   console.log('origObjParent =' , origObjParent)
-	const curObjExists = (patchObj.objectId === origObj.objectId && patchObj.objectType === origObj.objectType);
-   console.log('curObjExists = ', curObjExists); 
-	if(curObjExists){
-		for(const prop in patchObj){
-			if(!origObj.hasOwnProperty(prop))continue;
-			const val = patchObj[prop]
-         console.log('prop = ', prop);
-         console.log('val = ', val);
-			if(typeof val === 'object' && !Array.isArray(val)){// object
-            console.log('inside object block')
-				origObj[prop] = recursivePatchinRedis(origObj[prop], origObj[prop], val) // if curObjExists and cur key val is also an object, recur.
-			}else if(typeof val === 'object'){ // array
-            console.log('inside arr block');
-            const origArrValToIndexMap = {};
-            for(let i = 0; i < origObj[prop].length; i++){
-               origArrValToIndexMap[origObj[prop][i]] = i;
+ const recursivePatchinRedis = async(origObj, origObjParent, patchObj, client) =>{
+   try{
+      console.log('origObj = ', origObj);
+      console.log('patchObj = ', patchObj);
+      console.log('origObjParent =' , origObjParent)
+      const curObjExists = (patchObj.objectId === origObj.objectId && patchObj.objectType === origObj.objectType);
+      console.log('curObjExists = ', curObjExists); 
+      if(curObjExists){
+         const parentKey = patchObj.objectType + "_" + patchObj.objectId; 
+         for(const prop in patchObj){
+            if(!origObj.hasOwnProperty(prop))continue;
+            const val = patchObj[prop]
+            console.log('prop = ', prop);
+            console.log('val = ', val);
+            if(typeof val === 'object' && !Array.isArray(val)){// object
+               console.log('inside object block')
+               origObj[prop] = await recursivePatchinRedis(val, origObj, val, client) // if curObjExists and cur key val is also an object, recur.
+               // dont need to do any setting here for updating redisClient, since ${parentKey.objectType + "_" + parentKey.objectId}_prop = ${val.objectType + "_" + val.objectId} already would exist
+            }else if(typeof val === 'object'){ // array
+               console.log('inside arr block');
+               const origArrValToIndexMap = {};
+               for(let i = 0; i < origObj[prop].length; i++){
+                  origArrValToIndexMap[origObj[prop][i]] = i;
+               }
+               console.log('origgArrValToIndexMap = ',origArrValToIndexMap);
+               const newArr = [];
+               for(let i = 0; i < val.length; i++){
+                  if(origArrValToIndexMap[val[i]] == undefined)continue;
+                  console.log('val[' + i + '] = ', val[i]);
+                  console.log('typeof ' + val[i] + " = " + (typeof val[i]))
+                  if(typeof val[i] !== 'object'){ // must be simple prop, since cant be arr inside arr due to invalid schema
+                     console.log(`updating ${origObj[prop][i]} to be `)
+                     origObj[prop][origArrValToIndexMap[val[i]]] = val[i];
+                     newArr.push(val[i]);  // need to update the ${parentKey.objectType + "_" + parentKey.objectId}_prop = [3,4,2,5] here. start updating arr
+                     console.log(`${origObj[prop][origArrValToIndexMap[val[i]]]}`)
+                  }else{ // must be obj
+                     const arrObjExists = (val[i].objectId === origObj[prop][origArrValToIndexMap[val[i]]].objectId && val[i].objectType === origObj[prop][origArrValToIndexMap[val[i]]].objectType);
+                     if(!arrObjExists){ // set inv link if the arr contains a new obj. 
+                        await client.set(val[i].objectType + "_" + val[i].objectId + "_inv_" + prop, parentKey); // setting inv link from obj in arr, to the parent obj that contains the arr key.
+                     }
+                     await recursivePatchinRedis(origObj[prop][origArrValToIndexMap[val[i]]], origObj[prop], val[i], client) // if origObjExists and cur key val is array, recur into object while maintaining parent a level above, since array append could take place.
+                     newArr.push(val[i].objectType + "_" + val[i].objectId) // need to update the ${parentKey.objectType + "_" + parentKey.objectId}_prop = [{"a":..},{},{}] here. start updating arr
+                  }
+               }
+               await client.set(parentKey + '_' + prop, JSON.stringify(newArr)); // set forward link from the parent object to the array using the array key
+            }else{ // simple prop
+               console.log(`updating ${origObj[prop]} to be `, val)
+               origObj[prop] = val; // simply make changes in simple props.
+               console.log(`successfully updated simple val : ${val} in ${prop}, origObj.${prop} = `,origObj[prop])
+               await client.hSet(patchObj.objectType + "_" + patchObj.objectId, prop, val);// add new hSetVal in client
+               console.log(`${origObj[prop]}`)
+               return origObj
             }
-            console.log('origgArrValToIndexMap = ',origArrValToIndexMap);
-				for(let i = 0; i < val.length; i++){
-               if(origArrValToIndexMap[val[i]] == undefined)continue;
-               console.log('val[' + i + '] = ', val[i]);
-               console.log('typeof ' + val[i] + " = " + (typeof val[i]))
-					if(typeof val[i] !== 'object'){ // must be simple prop, since cant be arr inside arr due to invalid schema
-                  console.log(`updating ${origObj[prop][i]} to be `)
-						origObj[prop][origArrValToIndexMap[val[i]]] = val[i]; 
-                  console.log(`${origObj[prop][origArrValToIndexMap[val[i]]]}`)
-					}else{ // must be obj
-						recursivePatchinRedis(origObj[prop][origArrValToIndexMap[val[i]]], origObj[prop], val[i]) // if origObjExists and cur key val is array, recur into object while maintaining parent a level above, since array append could take place.
-					}
-				}
-			}else{ // simple prop
-            console.log(`updating ${origObj[prop]} to be `)
-				origObj[prop] = val; // simply make changes in simple props.
-            console.log(`${origObj[prop]}`)
-			}
-		}
-	}
-	else{ // !curObj does not exist
-		if(typeof origObj === 'object' && Array.isArray(origObjParent)){// if parent is an array, only then make append using parent reference
-         console.log('pushing obj ', patchObj);
-         console.log('to parent arr ', origObjParent)
-			origObjParent.push(patchObj);
-		}
-	}
+            console.log(`----Finished processing prop `, prop)
+            console.log(`prop - ${prop} - val = `, origObj[prop])
+         }
+      }
+      else{ // !curObj does not exist
+         if(typeof origObj === 'object' && Array.isArray(origObjParent)){// if parent is an array, only then make append using parent reference
+            console.log('pushing obj ', patchObj);
+            console.log('to parent arr ', origObjParent)
+            origObjParent.push(patchObj);
+            await recursiveSETinRedis(patchObj, client); // recursively add keys for this new object in redis
+         }
+      }
+   }catch(e){
+      console.log('Error : ', e);
+   }
    return origObj;
 }
 

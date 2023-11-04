@@ -72,7 +72,8 @@
           "objectId": { "type": "string" },
           "objectType": { "type": "string" }
         },
-        "required": ["objectId"]
+        "required": ["objectId"],
+        "additionalProperties": false
       }
     },
     "_org": { "type": "string"},
@@ -81,6 +82,5 @@
     "planType": { "type": "string" },
     "creationDate": { "type": "string"}
   },
-  "required": ["objectId"],
-  "additionalProperties": false
+  "required": ["objectId"]
 }

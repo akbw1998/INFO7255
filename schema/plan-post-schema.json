@@ -30,7 +30,8 @@
          "objectId": { "type": "string" },
          "objectType": { "type": "string" }
        },
-       "required": ["deductible", "_org", "copay", "objectId", "objectType"]
+       "required": ["deductible", "_org", "copay", "objectId", "objectType"],
+       "additionalProperties": false
      },
      "linkedPlanServices": {
        "$id": "#/properties/linkedPlanServices",
@@ -53,7 +54,8 @@
                "objectType": { "type": "string" },
                "name": { "type": "string" }
              },
-             "required": ["_org", "objectId", "objectType", "name"]
+             "required": ["_org", "objectId", "objectType", "name"],
+             "additionalProperties": false
            },
            "planserviceCostShares": {
             "$id": "#/properties/linkedPlanServices/items/properties/planserviceCostShares",
@@ -66,13 +68,15 @@
                "objectId": { "type": "string" },
                "objectType": { "type": "string" }
              },
-             "required": ["deductible", "_org", "copay", "objectId", "objectType"]
+             "required": ["deductible", "_org", "copay", "objectId", "objectType"],
+             "additionalProperties": false
            },
            "_org": { "type": "string" },
            "objectId": { "type": "string" },
            "objectType": { "type": "string" }
          },
-         "required": ["linkedService", "planserviceCostShares", "_org", "objectId", "objectType"]
+         "required": ["linkedService", "planserviceCostShares", "_org", "objectId", "objectType"],
+         "additionalProperties": false
        }
      },
      "_org": { "type": "string"},
