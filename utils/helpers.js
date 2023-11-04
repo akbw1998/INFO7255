@@ -2,7 +2,6 @@ const crypto = require('crypto');
 const jws = require('jws');
 const jwksClient = require('jwks-rsa');
 const axios = require('axios');
-const { nextTick } = require('process');
 
 const setSuccessResponse = (successJson, successStatusCode,  res) => {
    res.status(successStatusCode)
@@ -122,7 +121,6 @@ const generateETag = (content) => {
 
 async function verifyToken(token, decodedToken, jwksUri ) {
    try {
-     
      // Get the signing key from JWKS
      const jwksClientInstance = jwksClient({
        jwksUri,

@@ -38,6 +38,7 @@ const authenticate = async(req, res, next) => {
    const token = authHeader.split(' ')[1];
    let decodedToken = null;
    if(!token || !(decodedToken = jws.decode(token))){
+
       next(ApiError.unauthorized("Authentication Error - Invalid token format"));
       return
    }
@@ -45,14 +46,17 @@ const authenticate = async(req, res, next) => {
    try {
       const decodedPayload = decodedToken.payload
       console.log('decodedPayload = ', decodedPayload)
+
       if (!decodedPayload) {
          next(ApiError.unauthorized("Authentication Error - Invalid token Payload"))
          return
       }
+     
       const { iss } = decodedPayload;
       console.log('iss = ', iss);
 
       // check if issuer is allowed first
+
       if(idp_iss_allowList[iss] === undefined){
          next(ApiError.unauthorized("Authentication Error - unallowed issuer"));
          return
@@ -84,6 +88,7 @@ const authenticate = async(req, res, next) => {
       const jwksUri = openidConfig.jwks_uri;
      
       await verifyToken(token, decodedToken, jwksUri);
+
       next();
    }catch(e){
       next(ApiError.serviceUnavailable(e));
