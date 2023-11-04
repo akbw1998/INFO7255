@@ -36,27 +36,45 @@ const authenticate = async(req, res, next) => {
    }
    
    const token = authHeader.split(' ')[1];
-   if(!token || !jws.decode(token)){
+   let decodedToken = null;
+   if(!token || !(decodedToken = jws.decode(token))){
+
       next(ApiError.unauthorized("Authentication Error - Invalid token format"));
       return
    }
 
    try {
-      const tokenPayload = token.split('.')[1];
-      const decodedPayload = JSON.parse(Buffer.from(tokenPayload, 'base64').toString('utf-8'));
+      const decodedPayload = decodedToken.payload
+      console.log('decodedPayload = ', decodedPayload)
 
       if (!decodedPayload) {
          next(ApiError.unauthorized("Authentication Error - Invalid token Payload"))
          return
       }
-      console.log('decodedPayload = ' , decodedPayload);
+     
       const { iss } = decodedPayload;
       console.log('iss = ', iss);
+
+      // check if issuer is allowed first
 
       if(idp_iss_allowList[iss] === undefined){
          next(ApiError.unauthorized("Authentication Error - unallowed issuer"));
          return
       }
+
+      //check if token expired
+      console.log(' decodedPayload.exp=', decodedPayload.exp)
+      console.log('Date.now()=',Date.now())
+      console.log('Date.now() / 1000=',Date.now() / 1000)
+      console.log('Math.floor(Date.now() / 1000)=',Math.floor(Date.now() / 1000))
+      console.log('decodedToken.payload.exp < Math.floor(Date.now() / 1000) = ' +  decodedPayload.exp < Math.floor(Date.now() / 1000))
+
+      if ( decodedPayload.exp < Math.floor(Date.now() / 1000)) {
+         console.log('Token has expired');
+         next(ApiError.unauthorized("Authentication Error - Expired token"));
+         return
+      }
+
       // Fetch OpenID configuration to get jwks_uri
       const well_known_conf_url = idp_iss_allowList[iss];
       console.log('well_known_conf_url = ', well_known_conf_url)
@@ -69,7 +87,8 @@ const authenticate = async(req, res, next) => {
  
       const jwksUri = openidConfig.jwks_uri;
      
-      await verifyToken(token, jwksUri);
+      await verifyToken(token, decodedToken, jwksUri);
+
       next();
    }catch(e){
       next(ApiError.serviceUnavailable(e));
