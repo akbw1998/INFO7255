@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const jws = require('jws');
 const jwksClient = require('jwks-rsa');
 const axios = require('axios');
+const { nextTick } = require('process');
 
 const setSuccessResponse = (successJson, successStatusCode,  res) => {
    res.status(successStatusCode)
@@ -119,14 +120,9 @@ const generateETag = (content) => {
    return origObj;
 }
 
-async function verifyToken(token, jwksUri ) {
+async function verifyToken(token, decodedToken, jwksUri ) {
    try {
-     // Decode the token
-     const decodedToken = jws.decode(token);
-     if (!decodedToken) {
-       throw new Error('Invalid token format');
-     }
- 
+     
      // Get the signing key from JWKS
      const jwksClientInstance = jwksClient({
        jwksUri,
@@ -140,11 +136,12 @@ async function verifyToken(token, jwksUri ) {
      // Verify the token's signature
      if (jws.verify(token, 'RS256', signingKey)) {
        console.log('Token is valid');
-     } else {
-       console.log('Token is invalid');
+     } else{
+         throw ApiError.unauthorized("Authorization error - invalid token for resource");
      }
    } catch (error) {
      console.error('Error:', error);
+     next(error)
    }
  }
 
