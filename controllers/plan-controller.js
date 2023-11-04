@@ -67,7 +67,7 @@ class PlanController{
                next(ApiError.preconditionFailed("Plan ETag does not match"));
                return
             }
-            await PlanService.deletePlanById(planId)
+            await PlanService.deletePlanById(planId, planJSON)
             setSuccessResponse(null, StatusCodes.NO_CONTENT, res)
          }
       } catch (error) {

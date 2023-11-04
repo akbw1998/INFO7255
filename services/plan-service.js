@@ -1,6 +1,6 @@
 const ApiError = require('../error/api-error')
 const RedisClientFactory = require('../redisClientProvider')
-const {recursiveSETinRedis, recursivePatchinRedis} = require('../utils/helpers')
+const {recursiveSETinRedis, recursivePatchinRedis, recursiveDelete} = require('../utils/helpers')
 const {generateETag} = require('../utils/helpers');
 
 class PlanService{
@@ -20,12 +20,13 @@ class PlanService{
       })
    }
 
-   static deletePlanById(planId) {
+   static deletePlanById(planId, planJSON) {
     return new Promise(async(resolve, reject) => {
       try{
         const client = await RedisClientFactory().getClient()
         console.log('just before calling delete on client')
         await client.del(`plan:${planId}`)
+        await recursiveDelete(planJSON, client);
         // console.log('resolving get data',data)
         resolve("Key successfully deleted");
       }catch(error){

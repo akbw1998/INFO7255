@@ -91,7 +91,10 @@ const authenticate = async(req, res, next) => {
 
       next();
    }catch(e){
-      next(ApiError.serviceUnavailable(e));
+      if(e instanceof ApiError)
+         next(e);
+      else
+         next(ApiError.serviceUnavailable(e));
    }
 }
 

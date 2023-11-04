@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const jws = require('jws');
 const jwksClient = require('jwks-rsa');
 const axios = require('axios');
+const ApiError = require('../error/api-error')
 
 const setSuccessResponse = (successJson, successStatusCode,  res) => {
    res.status(successStatusCode)
@@ -24,6 +25,41 @@ const generateETag = (content) => {
    return `"${md5Hash}"`; // Wrap the hash in double quotes (standard ETag format)
  }
 
+ const recursiveDelete = async(obj, redisClient) => {
+   try{
+      const curKey = obj['objectType'] + '_' + obj['objectId'];
+      console.log('curKey = ', curKey);
+      for(const key in obj){
+         const value = obj[key];
+         if (!Array.isArray(value) && typeof value === 'object') { // object
+            await recursiveDelete(value, redisClient);
+            // delete inverse key first after coming out of recur
+            const invKey = (value.objectType + "_" + value.objectId) + '_inv_' + key;
+            console.log('invKey = ', invKey);
+            await redisClient.del(invKey);
+            //delete the key now
+            await redisClient.del(curKey + "_" + key);
+         }else if(Array.isArray(value)){ // array
+            for(const element of value){
+               await recursiveDelete(element, redisClient);
+               if(typeof element === 'object'){
+                  // delete inverse key first after coming out of recur
+                  const invKey = (element.objectType + "_" + element.objectId) + '_inv_' + key;
+                  console.log('invKey = ', invKey);
+                  await redisClient.del(invKey);
+                  // delete the key now
+                  await redisClient.del(curKey + "_" + key);
+               }
+            }
+         }else // simple prop
+            //  hDel key in this case.
+            await redisClient.hDel(curKey, key);
+      }
+      // delete the
+   }catch(e){
+      console.log('ERROR - ', e);
+   }
+ }
  const recursiveSETinRedis = async(obj, redisClient) => {
    try{
       console.log(`Currently in obj :  `, obj)
@@ -140,7 +176,7 @@ async function verifyToken(token, decodedToken, jwksUri ) {
      }
    } catch (error) {
      console.error('Error:', error);
-     next(error)
+     throw error;
    }
  }
 
@@ -160,6 +196,7 @@ module.exports = {
    generateETag,
    recursiveSETinRedis,
    recursivePatchinRedis,
+   recursiveDelete,
    verifyToken,
    fetchWellKnownConfigDocument
 }
