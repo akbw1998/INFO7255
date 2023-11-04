@@ -132,6 +132,7 @@ async function verifyToken(token, decodedToken, jwksUri ) {
      const signingKey = key.getPublicKey();
      console.log('signing key = ', signingKey);
      // Verify the token's signature
+     
      if (jws.verify(token, 'RS256', signingKey)) {
        console.log('Token is valid');
      } else{
