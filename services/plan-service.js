@@ -26,6 +26,7 @@ class PlanService{
         const client = await RedisClientFactory().getClient()
         console.log('just before calling delete on client')
         await client.del(`plan:${planId}`)
+        console.log(`-----------Plan JSON passed to recur Del-----------`, planJSON);
         await recursiveDelete(planJSON, client);
         // console.log('resolving get data',data)
         resolve("Key successfully deleted");
@@ -104,10 +105,10 @@ class PlanService{
           const planId = origPlanJson.objectId;
           const client = await RedisClientFactory().getClient();
           console.log('GOT CLIENT IN PATCH SERVICE, planId = ', planId);
-          const patchedResponseJson = recursivePatchinRedis(origPlanJson, origPlanJson,patchPlanJson);
+          const patchedResponseJson = await recursivePatchinRedis(origPlanJson, origPlanJson,patchPlanJson, client);
           await client.set(`plan:${planId}`, JSON.stringify(patchedResponseJson));
           console.log('---Patched response json = ', patchedResponseJson);
-          resolve("Plan successfully patchd.");
+          resolve("Plan successfully patched.");
         }catch(e){
           reject(e)
         }

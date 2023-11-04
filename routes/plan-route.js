@@ -9,7 +9,7 @@ const PlanController = ControllerModule.PlanController
 userRouter.route('/v1/plan/:planId')
           .get(MiddlewareAPI.authenticate, PlanController.getPlanById)//MiddlewareAPI.invalidateEmptyReqIdParam,
           .delete(MiddlewareAPI.authenticate, PlanController.deletePlanById) //MiddlewareAPI.invalidateEmptyReqIdParam,
-          .patch(MiddlewareAPI.authenticate, PlanController.patchPlanRecursiveById) 
+          .patch(MiddlewareAPI.authenticate, MiddlewareAPI.validateDTO(planPatchValidator), PlanController.patchPlanRecursiveById) 
 
 userRouter.route('/v1/plan')
           .post(MiddlewareAPI.authenticate, MiddlewareAPI.validateDTO(planPostValidator),

@@ -48,7 +48,7 @@ class PlanController{
       try {
          // Step 1: Call the service method to retrieve the plan JSON
          const planJSON = await PlanService.getPlanById(planId);
-
+         console.log(`----------PlanJSON in controller delete method-----------`, planJSON);
          if (!planJSON) {
             // Step 2: Handle plan not found
             next(ApiError.notFound('Plan not found'))
